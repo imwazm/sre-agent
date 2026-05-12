@@ -8,9 +8,9 @@ const webhookRouter = require("./routes/webhook");
 app.use(express.json());
 
 const connectorModes = {
-  elk:        process.env.ELK_STUB       === "true" ? "stub" : "live",
-  datadog:    process.env.DATADOG_STUB   === "true" ? "stub" : "live",
-  servicenow: process.env.SERVICENOW_STUB === "true" ? "stub" : "live",
+  elk:        process.env.ELK_STUB     === "true" ? "stub" : "live",
+  datadog:    process.env.DATADOG_STUB === "true" ? "stub" : "live",
+  servicenow: "live", // stub removed — always uses dev instance
 };
 
 app.get("/health", (req, res) => {

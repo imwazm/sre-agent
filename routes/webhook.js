@@ -6,13 +6,13 @@ const { fetchMetrics, postEvent } = require("../services/datadog");
 const { analyzeIncident }    = require("../services/claudeService");
 const { createIncident }     = require("../services/servicenow");
 
-// Each connector has its own stub flag — can be switched independently
-const elkIsStub      = process.env.ELK_STUB      === "true";
-const datadogIsStub  = process.env.DATADOG_STUB  === "true";
-const snowIsStub     = process.env.SERVICENOW_STUB === "true";
+// ELK and Datadog can be toggled between stub and live
+// ServiceNow is always live — stub removed
+const elkIsStub     = process.env.ELK_STUB     === "true";
+const datadogIsStub = process.env.DATADOG_STUB === "true";
 
-// Scenario data is only needed if at least one connector is in stub mode
-const needsScenario  = elkIsStub || datadogIsStub;
+// Scenario data is only needed if ELK or Datadog is in stub mode
+const needsScenario = elkIsStub || datadogIsStub;
 const { getScenario, getRandomScenario } = needsScenario
   ? require("../data/scenarios")
   : { getScenario: null, getRandomScenario: null };
@@ -20,14 +20,13 @@ const { getScenario, getRandomScenario } = needsScenario
 /**
  * POST /webhook/alert
  *
- * Each connector is independently controlled via .env:
- *
+ * ELK and Datadog are independently toggled via .env:
  *   ELK_STUB=true/false
  *   DATADOG_STUB=true/false
- *   SERVICENOW_STUB=true/false
  *
- * Mix and match — e.g. keep ELK + Datadog on stub while ServiceNow is live.
- * Send { "scenario_id": "high-error-rate" } to use stub scenario data.
+ * ServiceNow is always live — always creates real incidents.
+ *
+ * Send { "scenario_id": "high-error-rate" } when any stub is active.
  * In full live mode, send a real alert payload { service, title, severity }.
  */
 router.post("/alert", async (req, res) => {
@@ -62,7 +61,7 @@ router.post("/alert", async (req, res) => {
     }
 
     console.log(`\n${"=".repeat(60)}`);
-    console.log(`[Pipeline] ELK: ${elkIsStub ? "stub" : "live"} | Datadog: ${datadogIsStub ? "stub" : "live"} | ServiceNow: ${snowIsStub ? "stub" : "live"}`);
+    console.log(`[Pipeline] ELK: ${elkIsStub ? "stub" : "live"} | Datadog: ${datadogIsStub ? "stub" : "live"} | ServiceNow: live`);
     console.log(`[Pipeline] Alert   : ${alert.title || alert.short_description}`);
     console.log(`[Pipeline] Service : ${alert.service} | Severity: ${alert.severity}`);
 
