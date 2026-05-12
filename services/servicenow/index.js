@@ -1,15 +1,11 @@
 /**
  * ServiceNow — Connector
  *
- *   SERVICENOW_STUB=true  → stub.js  (generates fake INC number, no network)
- *   SERVICENOW_STUB=false → real.js  (live ServiceNow REST API)
+ * Always uses the live ServiceNow REST API.
+ * Stub removed — dev instance is the standard.
  *
- * To go fully live and remove stub support entirely:
- *   1. Delete stub.js
- *   2. Replace this file with: module.exports = require('./real')
+ * Required in .env:
+ *   SERVICENOW_INSTANCE, SERVICENOW_USERNAME, SERVICENOW_PASSWORD
  */
 
-module.exports =
-  process.env.SERVICENOW_STUB === "true"
-    ? require("./stub")
-    : require("./real");
+module.exports = require("./real");
