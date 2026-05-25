@@ -1,53 +1,49 @@
+
 /**
  * ELK — Live Connector
  *
- * Queries Elasticsearch for recent ERROR logs using a time-windowed DSL query.
- *
- * Required in .env:
- *   ELASTICSEARCH_URL=http://your-elasticsearch-host:9200
+ * Queries your remote Elastic Cloud cluster for recent ERROR logs using a time-windowed query.
  */
 
-const axios = require("axios");
+// Import the cloud client we initialized at the root level
+const elasticClient = require("../../elasticClient");
 
 async function fetchLogs(service, _scenarioLogs = []) {
-  const url = process.env.ELASTICSEARCH_URL;
+  console.log(`[ELK] Querying Elastic Cloud for service: ${service}`);
 
-  if (!url) {
-    throw new Error("[ELK] ELASTICSEARCH_URL is not set in .env");
-  }
-
-  const query = {
-    query: {
-      bool: {
-        must: [
-          { match: { service } },
-          { match: { level: "ERROR" } },
-          {
-            range: {
-              "@timestamp": {
-                gte: "now-15m",
-                lte: "now",
-              },
-            },
-          },
-        ],
+  try {
+    // Execute a secure search query against your cloud cluster instance
+    const response = await elasticClient.search({
+      index: "logs-*", // Matches your log data indexes on Elastic Cloud
+      size: 50,        // Max logs to return to Claude
+      query: {
+        bool: {
+          must: [
+            { match: { service: service } },
+            { match: { level: "ERROR" } },
+            {
+              range: {
+                "@timestamp": {
+                  gte: "now-15m",
+                  lte: "now"
+                }
+              }
+            }
+          ]
+        }
       },
-    },
-    sort: [{ "@timestamp": { order: "desc" } }],
-    size: 50,
-  };
+      sort: [{ "@timestamp": { order: "desc" } }]
+    });
 
-  console.log(`[ELK] Querying Elasticsearch for service: ${service}`);
+    // Extract the raw document source data from the cloud hits array
+    const logs = response.hits.hits.map(hit => hit._source);
+    return logs;
 
-  const response = await axios.post(
-    `${url}/logs-*/_search`,
-    query,
-    { timeout: 5000, headers: { "Content-Type": "application/json" } }
-  );
-
-  const hits = response.data.hits?.hits || [];
-  console.log(`[ELK] Retrieved ${hits.length} log entries`);
-  return hits.map((hit) => hit._source);
+  } catch (error) {
+    // Catch cloud errors (like authentication issues or missing indexes) safely
+    console.error(`❌ [ELK Cloud Error]: ${error.message}`);
+    throw new Error(`[ELK Cloud Error] Failed to query cluster: ${error.message}`);
+  }
 }
 
 module.exports = { fetchLogs };
