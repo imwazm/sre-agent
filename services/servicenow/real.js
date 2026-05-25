@@ -52,7 +52,15 @@ async function createIncident(triage, alert) {
     }
   );
 
+  console.log(`[ServiceNow] Raw response status : ${response.status}`);
+  console.log(`[ServiceNow] Raw response data   :`, JSON.stringify(response.data).slice(0, 300));
+
   const result = response.data.result;
+
+  if (!result) {
+    throw new Error(`ServiceNow returned no result. Response: ${JSON.stringify(response.data).slice(0, 200)}`);
+  }
+
   console.log(`[ServiceNow] Incident created: ${result.number}`);
 
   return {
