@@ -8,28 +8,35 @@
 // Import the cloud client we initialized at the root level
 const elasticClient = require("../../elasticClient");
 
+// Must match the ECS data stream name used in seed.js
+const INDEX_NAME = "logs-sre-agent-default";
+
 async function fetchLogs(service, _scenarioLogs = []) {
   console.log(`[ELK] Querying Elastic Cloud for service: ${service}`);
 
   try {
     // Execute a secure search query against your cloud cluster instance
     const response = await elasticClient.search({
-      index: "logs-*", // Matches your log data indexes on Elastic Cloud
+      index: INDEX_NAME,
       size: 50,        // Max logs to return to Claude
       query: {
         bool: {
           must: [
             { match: { service: service } },
-            { match: { level: "ERROR" } },
             {
               range: {
                 "@timestamp": {
-                  gte: "now-15m",
+                  gte: "now-30m",
                   lte: "now"
                 }
               }
             }
-          ]
+          ],
+          should: [
+            { match: { level: "ERROR" } },
+            { match: { level: "WARN"  } },
+          ],
+          minimum_should_match: 0   // include all, but boost errors/warns
         }
       },
       sort: [{ "@timestamp": { order: "desc" } }]
@@ -37,6 +44,7 @@ async function fetchLogs(service, _scenarioLogs = []) {
 
     // Extract the raw document source data from the cloud hits array
     const logs = response.hits.hits.map(hit => hit._source);
+    console.log(`[ELK] Found ${logs.length} log(s) for ${service}`);
     return logs;
 
   } catch (error) {
